@@ -1,9 +1,6 @@
 #ifndef _SCE_LEXER_H_
 #define _SCE_LEXER_H_
-
-#include "transfer_test_functions.h"
-#include <assert.h>
-#define sce_si_strap static inline
+#include "sce_basic_api.h"
 typedef enum Sce_Lexer_Mode {
 	E_Sce_Lexer_Normal_Mode,
 	E_Sce_Lexer_Operator_Mode,

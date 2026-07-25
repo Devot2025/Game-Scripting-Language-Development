@@ -1,5 +1,9 @@
 #pragma once
 #include "std_ext/ext_strs.h"
+
+#define CONVERT_DEFINE_STR(name) #name
+#define CONVERT_DEFINE(name) name
+
 #define simple_strcmp(str1, str2) strcmp(str1, str2) == 0
 
 static inline bool is_u8byte_digit(const uint8_t byte__) {
@@ -168,6 +172,10 @@ static inline U8_String_Buffers move_u8_byte_u8_string_bufferr(U8_String_Buffers
 			buf
 	};
 }
+static inline bool is_same_u8_string_buffers(U8_String_Buffers* u8_string_buffers_1, U8_String_Buffers* u8_string_buffers_2) {
+	if (u8_string_buffers_1->index__ != u8_string_buffers_2->index__) return false;
+	return smart_memsame(u8_string_buffers_1->str__, u8_string_buffers_2->str__, uint8_t, u8_string_buffers_1->index__);
+}
 #include <inttypes.h>
 #include <stdarg.h>
 
@@ -244,6 +252,9 @@ static inline void u8strbuf_dysnprinf(U8_String_Buffers * dst, uint8_t* format_,
 	u8strbuf_dysnprinf(dst, "%" PRIu32, v)
 #define to_u64_u8strbuf(dst, v)\
 	u8strbuf_dysnprinf(dst, "%" PRIu64, v)
+#define to_d64_u8strbuf(dst, v)\
+	u8strbuf_dysnprinf(dst, "%" PRIi64, v)
+
 #define to_float_u8strbuf(dst, v)\
 	u8strbuf_dysnprinf(dst, "%f", v)
 #define to_double_u8strbuf(dst, v)\

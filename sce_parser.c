@@ -1166,6 +1166,7 @@ Sce_Ast_Node* build_sce_ast_pare(Sce_Lexer_Token_Lists* src_ans_token_list) {
 		Sce_Ast_Node* left_ = smart_malloc(Sce_Ast_Node, 1);
 		if (!left_) return NULL;
 		left_->right = build_sce_ast_expr_conmma(src_ans_token_list);
+		left_->left = NULL;
 		if (expect_advance_consume_sce_token_lists(src_ans_token_list, E_Sce_Lexer_Punchcute, ")")) set_up_sce_ast_node(left_, NULL, 0, E_Sce_Ast_Pare);
 		else set_up_sce_ast_node(left_, "error : expect to ')'", sizeof("error : expect to ')'"), E_Sce_Ast_Error);
 		return left_;
@@ -1193,10 +1194,10 @@ Sce_Ast_Node* build_sce_ast_basic_token(Sce_Lexer_Token_Lists* src_ans_token_lis
 		left_ = create_sce_ast_node(NULL, NULL, now_token->sce_token_str.str__, now_token->sce_token_str.index__ + 1, E_Sce_Ast_String_Value);
 		break;
 	case E_Sce_Lexer_Keyword:
+
 		left_ = create_sce_ast_node(NULL, NULL, "error : expect to operator.", sizeof("error : expect to operator."), E_Sce_Ast_Error);
 		break;
 	default:
-
 		left_ = create_sce_ast_node(NULL, NULL, "error : expect to operator.", sizeof("error : expect to operator."), E_Sce_Ast_Error);
 	}
 	consume_sce_token_lists(src_ans_token_list);

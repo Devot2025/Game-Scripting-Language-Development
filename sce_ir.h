@@ -1,6 +1,7 @@
 #ifndef _SCE_IR_H_
 #define _SCE_IR_H_
 #include "sce_parser.h"
+#include "sce_ir_helper.h"
 /*
 NAME A:
 LABEL END:
@@ -12,57 +13,13 @@ GOTO EXIT;
 GOTO EXIT
 
 */
-#define SET_SCE_BINARY_MACHINE_TYPE(CONVERT_FUNC)\
-CONVERT_FUNC(E_SCE_BINARY_INST_MOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_RMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_MMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_CMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_BMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_IMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_FMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_VMOV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_NAME__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_ADD__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SUB__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_MUL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_DIV__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_MOD__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_AND__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_OR__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_XOR__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_NOT__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_NOTL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SHR__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SHL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_EQ__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_NEQ__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_LS__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_GT__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_LSEQ__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_GTEQ__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_RET__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_CALL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_JMP__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_PHASE__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SYSTEM_CALL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_BUILT_IN_CALL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_LABEL__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_ALLOC__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_NAME_REPEAT__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_STACK_POINT__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SUB_STACK_POINT__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SAVE_REGISTER__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_LOAD_REGISTER__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_SAVE_REGISTER_STACK__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_LOAD_REGISTER_STACK__),\
-CONVERT_FUNC(E_SCE_BINARY_INST_DELETE_REGISTER__),
-#define E_SCE_IR_STSRING_OFFSET 17
-#define GET_SCE_IR_STRING(ir) debug_sce_ir_strs[ir->sce_bmr_code] + E_SCE_IR_STSRING_OFFSET
 
 static const uint8_t* debug_sce_ir_strs[] = {
 	SET_SCE_BINARY_MACHINE_TYPE(CONVERT_DEFINE_STR)
 };
+#define E_SCE_IR_STSRING_OFFSET 17
+#define GET_SCE_IR_STRING(ir) debug_sce_ir_strs[ir->sce_bmr_code] + E_SCE_IR_STSRING_OFFSET
+
 static const char call_write_string__[] = "__write__";
 static const char call_read_string__[]  = "__read__";
 static const char call_open_string__[]  = "__open__";
@@ -89,19 +46,16 @@ static const char not_defined_name_value_error[] = "Error : %s is not defined.";
 #define system_call_write_args__ 3
 #define system_call_read_args__ 2
 #define system_call_open_args__ 2
-typedef enum Sce_Binary_Instruction {
-	SET_SCE_BINARY_MACHINE_TYPE(CONVERT_DEFINE)
-}Sce_Binary_Instruction;
 #define SYSTEM_CALL_NULL    0x0
 #define SYSTEM_CALL_WRITE   0x1
 #define SYSTEM_CALL_READ    0x2
 #define SYSTEM_CALL_OPEN    0x3
 #define SYSTEM_CALL_CLOASE  0x4
 #define SYSTEM_CALL_TYPE    0x5
-#define SYSTEM_CALL_LEN     0x6
 #define SYSTEM_CALL_WRITE_STRING call_write_string__
 #define SYSTEM_CALL_READ_STRING  call_read_string__
 #define SYSTEM_CALL_OPEN_STRING  call_open_string__
+#define SYSTEM_CALL_LEN_STRING  call_len_string__
 /**
 * SVR IS SCE VIRTUAL REGISTER.
 * THIS IS GENERAL PURPOSE OBJECTS TYPE REGISTER.
@@ -129,23 +83,6 @@ typedef struct Sce_Binary_Machine_Instrcution {
 	} sce_b;
 
 }Sce_Binary_Machine_Instrcution;
-typedef struct Sce_Binary_Machine_Instructions {
-	struct Sce_Binary_Machine_Instructions* next;
-	Sce_Binary_Instruction sce_bmr_code;
-
-	uint32_t ope1;
-	union{
-		uint32_t ope2;
-		int64_t icope2;
-		uint8_t ccope2;
-		uint8_t* scope2;
-		void* vcope2;
-		float fcope2;
-		double dcope2;
-		bool bcope2;
-	};
-}Sce_Binary_Machine_Instructions;
-
 typedef struct Object_Name_Chain {
 	struct Object_Name_Chain* next_;
 	const uint8_t* name_;
@@ -155,6 +92,10 @@ typedef struct Nest_Object_Chain {
 	struct Nest_Object_Chain* next_;
 	const uint8_t* name_;
 }Nest_Object_Chain;
+typedef struct Sce_Max_Registers_Chain {
+	uint32_t max_registers;
+	struct Sce_Max_Registers_Chain* next_;
+}Sce_Max_Registers_Chain;
 typedef struct Sce_Create_Binary_Machine_Code_Data {
 	Sce_Ast_Node* ast_;
 	Sce_Binary_Machine_Instructions* sce_bmi;
@@ -171,7 +112,7 @@ typedef struct Sce_Create_Binary_Machine_Code_Data {
 	U8_String_Buffers now_nest_name_;
 	const char* now_function_name_;
 	size_t now_function_name_size_;
-
+	Sce_Max_Registers_Chain* state_register_max_chain;
 }Sce_Create_Binary_Machine_Code_Data;
 /*
 * 0 ERROR REGISTER
@@ -181,33 +122,33 @@ typedef struct Sce_Create_Binary_Machine_Code_Data {
 * 
 */
 
-#define SCE_VIRTUAL_REGISTER_MAX 127
-#define SCE_VIRTUAL_GENERAL_REGISTER_MAX 128
-#define SCE_VIRTUAL_REGISTER_RETURN SCE_VIRTUAL_GENERAL_REGISTER_MAX
-#define SCE_VIRTUAL_REGISTER_CMP_RETURN SCE_VIRTUAL_REGISTER_RETURN
-#define SCE_VIRTUAL_REGISTER_MAX_ 129
-#define SCE_VIRTUAL_STACK_MIN SCE_VIRTUAL_REGISTER_MAX_
-#define GET_SCE_STACK_START_OFFSET(idx) idx - SCE_VIRTUAL_STACK_MIN
-
 sce_si_strap uint32_t now_sce_virtual_register(Sce_Create_Binary_Machine_Code_Data* sce_bm_data) {
 	return sce_bm_data->sv_registers;
 }
 sce_si_strap uint32_t new_sce_virtual_register(Sce_Create_Binary_Machine_Code_Data* sce_bm_data) {
-	//if (sce_bm_data->sv_registers + 1 == SCE_VIRTUAL_REGISTER_CMP_RETURN) sce_bm_data->sv_registers++;
-	return ++sce_bm_data->sv_registers;
+	sce_bm_data->sv_registers++;
+	if (sce_bm_data->sv_registers == SCE_VIRTUAL_REGISTER_CMP_RETURN) sce_bm_data->sv_registers++;
+	return sce_bm_data->sv_registers;
 }
 
 sce_si_strap void delete_sce_virtual_register(Sce_Create_Binary_Machine_Code_Data* sce_bm_data) {
+
 	if (!sce_bm_data->sv_registers) return;
-	--sce_bm_data->sv_registers;
+	sce_bm_data->sv_registers--;
+	if (sce_bm_data->sv_registers == SCE_VIRTUAL_REGISTER_CMP_RETURN) sce_bm_data->sv_registers--;
 }
 
 sce_si_strap void delete_sce_virtual_registers(Sce_Create_Binary_Machine_Code_Data* sce_bm_data, uint32_t idx) {
 	if (sce_bm_data->sv_registers < idx) return;
 	sce_bm_data->sv_registers -= idx;
+	if (sce_bm_data->sv_registers == SCE_VIRTUAL_REGISTER_CMP_RETURN) sce_bm_data->sv_registers--;
+
 }
 
 sce_si_strap void reset_sce_virtual_register(Sce_Create_Binary_Machine_Code_Data* sce_bm_data) {
+	if (SCE_VIRTUAL_GENERAL_REGISTER_MAX < sce_bm_data->sv_registers &&
+		sce_bm_data->state_register_max_chain->max_registers < sce_bm_data->sv_registers - SCE_VIRTUAL_GENERAL_REGISTER_MAX)
+		sce_bm_data->state_register_max_chain->max_registers = sce_bm_data->sv_registers - SCE_VIRTUAL_GENERAL_REGISTER_MAX;
 	sce_bm_data->sv_registers = 0;
 }
 

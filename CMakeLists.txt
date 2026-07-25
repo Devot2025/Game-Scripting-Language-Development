@@ -13,10 +13,29 @@ add_executable(
 	"sce_parser.c"
 	"sce_ir.c"
 	"sce_run.c"
+	"sce_dynamic_link.c"
+
 	"${CMAKE_CURRENT_SOURCE_DIR}/std_ext/ext_alloc.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/std_ext/ext_strs.c"
 )
 
+add_library("sce_math" SHARED 
+	"sce_math.c"
+	#"sce_lexer.c"
+	#"sce_parser.c"
+	#"sce_ir.c"
+	#"sce_run.c"
+	#"sce_dynamic_link.c"
+
+	"${CMAKE_CURRENT_SOURCE_DIR}/std_ext/ext_alloc.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/std_ext/ext_strs.c"
+)
+
+target_include_directories(sce_math
+	PUBLIC
+	"${CMAKE_CURRENT_SOURCE_DIR}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/std_ext"
+)
 
 target_include_directories(speed_charm_event
 	PUBLIC

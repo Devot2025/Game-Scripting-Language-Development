@@ -251,6 +251,20 @@ static uint32_t build_sce_binary_run_code_call_function(Sce_Create_Binary_Machin
 	*
 	*/
 	if (!sys) {
+		uint32_t now_sv_register_num = get_now_register(*sce_bm_data);
+		if (now_sv_register_num) {
+			if (now_sv_register_num >= SCE_VIRTUAL_GENERAL_REGISTER_MAX) now_sv_register_num = SCE_VIRTUAL_GENERAL_REGISTER_MAX;
+			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(now_sv_register_num, 0, E_SCE_BINARY_INST_SAVE_REGISTER_STACK__));
+		}
+		reset_sce_virtual_register(sce_bm_data);
+		build_sce_binary_run_code_args(sce_bm_data, ast->right);
+		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(now_sce_virtual_register(sce_bm_data),  ast->left->data.buf, E_SCE_BINARY_INST_CALL__));
+		if (now_sv_register_num) {
+			if (now_sv_register_num >= SCE_VIRTUAL_GENERAL_REGISTER_MAX) now_sv_register_num = SCE_VIRTUAL_GENERAL_REGISTER_MAX;
+			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(now_sv_register_num, 0, E_SCE_BINARY_INST_LOAD_REGISTER_STACK__));
+		}
+		(void)new_sce_virtual_register(sce_bm_data);
+		return SCE_VIRTUAL_REGISTER_RETURN;
 	}
 	else if (sys == SYSTEM_CALL_READ) {
 		/**
@@ -419,7 +433,19 @@ static int build_opt_sce_binary_run_code_expr_ope(Sce_Create_Binary_Machine_Code
 	}
 	return -1;
 }
+static Sce_Max_Registers_Chain* new_chain_max_register(Sce_Max_Registers_Chain * now_) {
+	Sce_Max_Registers_Chain* chain_ = smart_malloc(Sce_Max_Registers_Chain, 1);
+	if (!chain_) return now_;
+	chain_->next_ = now_;
+	chain_->max_registers = 0;
+	return chain_;
+}
 
+static Sce_Max_Registers_Chain* delete_chain_max_register(Sce_Max_Registers_Chain* now_) {
+	Sce_Max_Registers_Chain* chain_ = now_->next_;
+	s_free(now_);
+	return chain_;
+}
 Sce_Binary_Machine_Instructions* sce_start_build_binary_run_code(bool * is_error, Sce_Ast_Node* left) {
 	if (!left) return NULL;
 	Sce_Create_Binary_Machine_Code_Data sce_bm_data = { left, NULL, NULL, NULL, NULL, 0, false, 0, 0 };
@@ -441,14 +467,30 @@ void build_sce_binary_run_code_module(Sce_Create_Binary_Machine_Code_Data* sce_b
 	Sce_Ast_Node* right_ = sce_bm_data->ast_;
 	chain_global_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, global_label, E_SCE_BINARY_INST_NAME__));
 	chain_global_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_i(1, 0, E_SCE_BINARY_INST_NAME_REPEAT__));
+	sce_bm_data->state_register_max_chain = new_chain_max_register(sce_bm_data->state_register_max_chain);
+
 	set_new_nest_object_chain(sce_bm_data, CHAIN_FILED_NAMES);
+	Sce_Binary_Machine_Instructions* start_ = sce_bm_data->sce_bmi_global;
 
 	while (right_) {
 		if (is_sce_ast_module(right_)) build_sce_binary_run_code_toplevel_statement(sce_bm_data, right_->right);
 		if (sce_bm_data->is_error) return;
-
 		right_ = right_->left;
 	}
+	if (sce_bm_data->state_register_max_chain->max_registers) {
+		Sce_Binary_Machine_Instructions* now_ = start_->next;
+		if (now_) {
+			start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+			start_ = start_->next;
+			start_->next = now_;
+		}
+		else {
+			start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+			sce_bm_data->sce_bmi_global = start_->next;
+		}
+		chain_global_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_SUB_STACK__));
+	}
+	sce_bm_data->state_register_max_chain = delete_chain_max_register(sce_bm_data->state_register_max_chain);
 	delete_now_nest(sce_bm_data);
 
 }
@@ -505,6 +547,7 @@ void build_sce_binary_run_code_name(Sce_Create_Binary_Machine_Code_Data* sce_bm_
 	if (!ast) return;
 
 	if (is_sce_ast_type(ast, E_Sce_Ast_Name_Statement)) {
+
 		set_new_nest_object_chain(sce_bm_data, CHAIN_FILED_NAMES);
 
 		Sce_Ast_Node* right_ = ast;
@@ -520,6 +563,19 @@ void build_sce_binary_run_code_name(Sce_Create_Binary_Machine_Code_Data* sce_bm_
 		}
 		Sce_Binary_Machine_Instructions* tail_ = sce_bm_data->sce_bmi;
 
+		if (sce_bm_data->state_register_max_chain->max_registers) {
+			if (inst_) {
+				Sce_Binary_Machine_Instructions* now_ = inst_->next;
+				inst_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				inst_ = inst_->next;
+				inst_->next = now_;
+				if(now_) inst_ = now_;
+			}
+			else {
+				inst_ = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				head_ = inst_;
+			}
+		}
 		if (!head_) {
 			head_ = gen_sce_bmi_s(0, exit_label, E_SCE_BINARY_INST_JMP__);
 			inst_ = head_;
@@ -539,7 +595,6 @@ void build_sce_binary_run_code_name(Sce_Create_Binary_Machine_Code_Data* sce_bm_
 			chain_sce_bmi_of_create_bm(sce_bm_data, tmp_);
 			sce_bm_data->sce_bmi = tail_;
 		}
-	ADD_HAS_PAHSE_IR:
 
 		if (!SCE_HAS_PHASE_LABEL(sce_bm_data, HAS_START_LABEL)) {
 			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, start_label, E_SCE_BINARY_INST_LABEL__));
@@ -581,12 +636,29 @@ void build_sce_binary_run_code_sections(Sce_Binary_Machine_Instructions ** init_
 		append_u8_byte_u8_string_basic(&sce_bm_data->now_nest_name_, start_label, START_LABEL_PREFIX_SIZE);
 		set_new_nest_object_chain(sce_bm_data, CHAIN_FILED_NAMES);
 		sce_bm_data->now_function_name_size_ = START_LABEL_PREFIX_SIZE;
+		sce_bm_data->state_register_max_chain = new_chain_max_register(sce_bm_data->state_register_max_chain);
+		Sce_Binary_Machine_Instructions* start_ = sce_bm_data->sce_bmi;
 		while (left_) {
 			build_sce_binary_run_code_expr_statement(sce_bm_data, left_->right);
 			if (sce_bm_data->is_error) return;
-
 			left_ = left_->left;
 		}
+		if (sce_bm_data->state_register_max_chain->max_registers) {
+			Sce_Binary_Machine_Instructions* now_ = start_->next;
+			if (now_) {
+				start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				start_ = start_->next;
+				start_->next = now_;
+			}
+			else {
+				start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				sce_bm_data->sce_bmi = start_->next;
+			}
+			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_SUB_STACK__));
+
+		}
+		sce_bm_data->state_register_max_chain = delete_chain_max_register(sce_bm_data->state_register_max_chain);
+
 		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, "%main", E_SCE_BINARY_INST_JMP__));
 		delete_now_nest(sce_bm_data);
 
@@ -600,12 +672,30 @@ void build_sce_binary_run_code_sections(Sce_Binary_Machine_Instructions ** init_
 		sce_bm_data->now_function_name_size_ = MAIN_LABEL_PREFIX_SIZE;
 		set_new_nest_object_chain(sce_bm_data, CHAIN_FILED_NAMES);
 
+		sce_bm_data->state_register_max_chain = new_chain_max_register(sce_bm_data->state_register_max_chain);
+		Sce_Binary_Machine_Instructions* start_ = sce_bm_data->sce_bmi;
 		while (left_) {
 			build_sce_binary_run_code_expr_statement(sce_bm_data, left_->right);
 			if (sce_bm_data->is_error) return;
 
 			left_ = left_->left;
 		}
+		if (sce_bm_data->state_register_max_chain->max_registers) {
+			Sce_Binary_Machine_Instructions* now_ = start_->next;
+			if (now_) {
+				start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				start_ = start_->next;
+				start_->next = now_;
+			}
+			else {
+				start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				sce_bm_data->sce_bmi = start_->next;
+			}
+			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_SUB_STACK__));
+
+		}
+		sce_bm_data->state_register_max_chain = delete_chain_max_register(sce_bm_data->state_register_max_chain);
+
 		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, "%main", E_SCE_BINARY_INST_JMP__));
 		delete_now_nest(sce_bm_data);
 
@@ -619,12 +709,31 @@ void build_sce_binary_run_code_sections(Sce_Binary_Machine_Instructions ** init_
 		sce_bm_data->now_function_name_size_ = END_LABEL_PREFIX_SIZE;
 		set_new_nest_object_chain(sce_bm_data, CHAIN_FILED_NAMES);
 
+		sce_bm_data->state_register_max_chain = new_chain_max_register(sce_bm_data->state_register_max_chain);
+		Sce_Binary_Machine_Instructions* start_ = sce_bm_data->sce_bmi;
+
 		while (left_) {
 			build_sce_binary_run_code_expr_statement(sce_bm_data, left_->right);
 			if (sce_bm_data->is_error) return;
 
 			left_ = left_->left;
 		}
+
+		if (sce_bm_data->state_register_max_chain->max_registers) {
+			Sce_Binary_Machine_Instructions* now_ = start_->next;
+			if (now_) {
+				start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				start_ = start_->next;
+				start_->next = now_;
+			}
+			else {
+				start_->next = gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_ADD_STACK__);
+				sce_bm_data->sce_bmi = start_->next;
+			}
+			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(sce_bm_data->state_register_max_chain->max_registers, 0, E_SCE_BINARY_INST_SUB_STACK__));
+
+		}
+		sce_bm_data->state_register_max_chain = delete_chain_max_register(sce_bm_data->state_register_max_chain);
 		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, "%exit", E_SCE_BINARY_INST_JMP__));
 		delete_now_nest(sce_bm_data);
 
@@ -678,19 +787,26 @@ static void set_sce_append_nest_name(Sce_Create_Binary_Machine_Code_Data* sce_bm
 	int i = snprintf(sce_bm_data->sv_local_label_buf, CONST_128_BYTE, nest_name, sce_bm_data->sv_local_label);
 	append_u8_byte_u8_string_basic(&sce_bm_data->now_nest_name_, sce_bm_data->sv_local_label_buf, (size_t)i);
 }
+static bool is_ast_call_function(Sce_Ast_Node* ast) {
+	if (!ast) return false;
+	return is_sce_ast_type(ast, E_Sce_Ast_Call_Function);
+}
 void build_sce_binary_run_code_condition_expr(Sce_Create_Binary_Machine_Code_Data* sce_bm_data, Sce_Ast_Node* ast) {
+	bool is_function = is_ast_call_function(ast);
 	uint32_t ope1 = build_sce_binary_run_code_basic_iden(sce_bm_data, ast);
 	set_sce_append_nest_name(sce_bm_data, if_label_prefix);
-	if (ope1 == SCE_VIRTUAL_REGISTER_CMP_RETURN) {
+	if (ope1 == SCE_VIRTUAL_REGISTER_CMP_RETURN && !is_function) {
 		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, sce_bm_data->now_nest_name_.str__, E_SCE_BINARY_INST_JMP__));
 	}
 	else {
-		uint32_t ope2 = new_sce_virtual_register(sce_bm_data);
-		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_i(ope2, 0, E_SCE_BINARY_INST_IMOV__));
-
-		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(ope1, ope2, E_SCE_BINARY_INST_EQ__));
+		//uint32_t ope2 = new_sce_virtual_register(sce_bm_data);
+		//chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_i(ope2, 0, E_SCE_BINARY_INST_IMOV__));
+		//chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(ope1, ope2, E_SCE_BINARY_INST_EQ__));
+		//chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, sce_bm_data->now_nest_name_.str__, E_SCE_BINARY_INST_JMP__));
+		//delete_sce_virtual_registers(sce_bm_data, 1);
+		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(ope1, 0, E_SCE_BINARY_INST_TEST__));
 		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi_s(0, sce_bm_data->now_nest_name_.str__, E_SCE_BINARY_INST_JMP__));
-		delete_sce_virtual_registers(sce_bm_data, 1);
+
 	}
 }
 uint32_t build_sce_binary_run_code_expr_statement(Sce_Create_Binary_Machine_Code_Data* sce_bm_data, Sce_Ast_Node* ast) {
@@ -764,7 +880,11 @@ uint32_t build_sce_binary_run_code_expr_ope(Sce_Create_Binary_Machine_Code_Data*
 	if (is_sce_ast_type(ast, E_Sce_Ast_Call_Function)) {
 		return build_sce_binary_run_code_call_function(sce_bm_data, ast);
 	}
+	else if (is_sce_ast_type(ast, E_Sce_Ast_Pare)) {
 
+		return build_sce_binary_run_code_basic_iden(sce_bm_data, ast->right);
+		//uint32_t right_ = build_sce_binary_run_code_basic_iden(sce_bm_data, ast->right);
+	}
 	else if (is_sce_ast_type(ast, E_Sce_Ast_Equal)) {
 		/*
 		* 3 OPERAND
@@ -957,7 +1077,6 @@ uint32_t build_sce_binary_run_code_expr_ope(Sce_Create_Binary_Machine_Code_Data*
 		uint32_t left_ = build_sce_binary_run_code_basic_symbol_iden(sce_bm_data, ast->left);
 		uint32_t right_ = build_sce_binary_run_code_basic_iden(sce_bm_data, ast->right);
 		if (sce_bm_data->is_error) return 0;
-
 		chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(left_, right_, E_SCE_BINARY_INST_DIV__));
 		delete_sce_virtual_registers(sce_bm_data, 1);
 	}
@@ -1284,6 +1403,14 @@ uint32_t build_sce_binary_run_code_basic_const_iden(Sce_Create_Binary_Machine_Co
 		return sce_bm_data->sv_registers;
 	}
 	else {
+		/**
+		* R1
+		* func or this proc
+		* R2, R128
+		* 
+		* ---> return
+		* 
+		*/
 		uint32_t left_ = build_sce_binary_run_code_expr_ope(sce_bm_data, ast);
 		if (is_register_return(left_)) {
 			chain_sce_bmi_of_create_bm(sce_bm_data, gen_sce_bmi(now_sce_virtual_register(sce_bm_data), left_, E_SCE_BINARY_INST_RMOV__));

@@ -1,21 +1,9 @@
 #include "sce_run.h"
 #include "sce_system_call.h"
-#define GET_ERROR_STRING(dst, format, ...)\
-	do{\
-		uint32_t req = snprintf(NULL, 0, "error : "format, ##__VA_ARGS__);\
-		req += 1;\
-		dst =\
-		smart_malloc(uint8_t, req);\
-		if (!dst) break;\
-		(void)snprintf(dst, req, "error : "format, ##__VA_ARGS__); \
-	} while (0)
-
-#define get_vm_error_status(dst, format, ...)\
-	do{\
-		GET_ERROR_STRING((dst).vm_error_status.error_str, format, ##__VA_ARGS__);\
-		if(!(dst).vm_error_status.error_str) (dst).vm_error_status.error_vm_fallback_code = SCE_VM_FALLBACK_CODE;\
-	}while(0)
-
+#include "sce_run_error_func.h"
+#include "sce_built_in_functions.h"
+#include "sce_run_vm_helper.h"
+#include "sce_built_in_functions.h"
 
 #define operator_sce_function_vm(ope, opestr) \
 	if (mem1->sce_run_value.value_type == E_Sce_Run_Mem_Value) { \
@@ -282,22 +270,64 @@
 			break; \
 		} \
 	} 
-#define check_global_module_name(str1) simple_strcmp(str1, global_label)
-#define get_global_module_symbol_table(vm_ctx) &((vm_ctx).root_symbol)
-#define access_vm_ctx_svr(vm_ctx, svr_idx) (vm_ctx).svrs_.svr[svr_idx]
-#define eqaul_now_ctx_global(ctx_) &(ctx_).now_vm_symbol_->global_filed == (ctx_).now_vm_symbol_->label_context
-
-#define is_svr_type(srv_ptr, type) srv_ptr->sce_run_value.value_type == type
-#define access_svr_mvalue(svr) ((svr).sce_run_value.mvalue)
-#define is_svr_value_type(svr, type) (svr).sce_run_value.value_type == type
-#define get_svr_ivalue(svr) (svr).sce_run_value.ivalue
-#define GLOBAL_LABEL (0x1 << 0x0)
-#define LOCAL_LABEL (0x1 << 0x1)
-#define INIT_FINISHED   (0x1 << 0x2)
 
 #define SCE_SYSTEM_STDOUT 0
 #define SCE_SYSTEM_STDIN  1
 #define SCE_SYSTEM_STDERR 2
+static void set_global_built_in_function(Sce_Run_VM_Context* sce_vm_context) {
+	sce_vm_context->root_symbol.built_in_table.label_ = built_in_adress;
+	sce_vm_context->root_symbol.built_in_table.size_ = 1;
+}
+void sub_svr_value(Sce_Run_VM_Error_Status* error_status, Sce_Virtual_Memory* mem1, Sce_Virutal_Register* mem2) {
+	Sce_Virtual_Memory* tmp_mem2 = mem2;
+
+	operator_sce_function_vm(
+		-,
+		"Subtraction"
+	)
+		delete_sce_run_virtual_memory(tmp_mem2);
+
+}
+static void sub_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
+	Sce_Virutal_Register* svr1 =
+		get_svr(sce_vm_context, sce_inst->ope1);
+	Sce_Virutal_Register* svr2 =
+		get_svr(sce_vm_context, sce_inst->ope2);
+	sub_svr_value(
+		&sce_vm_context->vm_error_status,
+		svr1, svr2
+	);
+}
+static void sce_type(uint32_t argc, Sce_Virutal_Register* svrs, Sce_Run_VM_Error_Status* dst_) {
+#define ARGC_CALL_TYPE 1
+	if (argc != ARGC_CALL_TYPE) {
+		GET_ERROR_STRING(
+			dst_->error_str, 
+			"System call '%s' expected %lu arguments, but got %lu.",
+			"type",
+			ARGC_CALL_TYPE,
+			argc
+		);
+		return;
+	}
+	Sce_Virtual_Memory* svr1 = &svrs[1];
+	Sce_Virtual_Memory* tmp_svr1 = &svrs[1];
+	Sce_Virtual_Memory* svrr = &svrs[SCE_VIRTUAL_REGISTER_RETURN];
+	if (svr1->sce_run_value.value_type) svr1 = svr1->sce_run_value.mvalue;
+	const uint8_t* buf_ = run_value_type_str[svr1->sce_run_value.value_type];
+	svrr->sce_run_value.ssvalue = smart_malloc(U8_String_Buffers, 1);
+	if (!svrr->sce_run_value.ssvalue) {
+		GET_ERROR_STRING(
+			dst_->error_str,
+			"Failed to Memory Allocation."
+		);
+		return;
+	}
+	uint32_t len_ = u8strlen_u32(buf_);
+	init_u8_string_buffers(svrr->sce_run_value.ssvalue, len_);
+	append_u8_byte_u8_string_basic(svrr->sce_run_value.ssvalue, buf_, len_);
+	delete_sce_run_virtual_memory(svr1);
+}
 
 static uint8_t* get_svr_value_to_str_(bool* is_ref, uint32_t* size_, Sce_Virutal_Register* svr) {
 	if (is_svr_value_type(*svr, E_Sce_Run_String_Value)) {
@@ -414,6 +444,12 @@ static Sce_VM_Symbol_Table* search_module_name(Sce_VM_Symbol_Table * vm_modules,
 	return NULL;
 }
 
+static Sce_Built_In_Label* search_built_in_label_name(Sce_Built_In_Label_Table * built_in, const uint8_t* name_) {
+	for (uint32_t i = 0; i < built_in->size_; ++i) {
+		if (simple_strcmp((*(built_in->label_ + i)).label_name, name_)) return (built_in->label_ + i);
+	}
+	return NULL;
+}
 static Sce_VM_Label_Table* search_label_name(Sce_VM_Label_Table * vm_label, const uint8_t * name_) {
 	while (vm_label) {
 
@@ -519,6 +555,15 @@ static Sce_Run_VM_Context gen_sce_vm_context() {
 }
 
 static int set_new_label_vm_context(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instructions** sce_inst) {
+	Sce_Built_In_Label* built_in_label = search_built_in_label_name(&vm_context->now_vm_symbol_->built_in_table, (*sce_inst)->scope2);
+	if (built_in_label) {
+		get_vm_error_status(
+			*vm_context,
+			"%s is invalid label.",
+			built_in_label->label_name
+		);
+		return -3;
+	}
 	Sce_VM_Label_Table* label_;
 	label_ = search_label_name(vm_context->now_vm_symbol_->label_table_, (*sce_inst)->scope2);
 	if (!label_) return -2;
@@ -540,15 +585,300 @@ static int set_new_label_vm_context(Sce_Run_VM_Context* vm_context, Sce_Binary_M
 		/*
 		* CMP REQ
 		*/
+
 		Sce_Virutal_Register* svr128 = get_svr(vm_context, SCE_VIRTUAL_REGISTER_CMP_RETURN);
 		if (svr128->sce_run_value.value_type == E_Sce_Run_Bool_Value) {
-			if (svr128->sce_run_value.bvalue == false) return 3;
+			if (svr128->sce_run_value.bvalue == true) return 3;
 		}
 		else return -3;
+
 		(*sce_inst) = label_->lebel_adress_->next;
 		return 1;
 	}
 }
+static void test_sce_vm_context(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* inst_) {
+	Sce_Virutal_Register* svr1 = get_svr(sce_vm_context, inst_->ope1);
+	Sce_Virutal_Register* svrr = get_svr(sce_vm_context, SCE_VIRTUAL_REGISTER_CMP_RETURN);
+	Sce_Virutal_Register* t_svr1 = svr1;
+	if (is_svr_type(svr1, E_Sce_Run_Mem_Value)) svr1 = access_svr_mvalue(*svr1);
+	switch (access_svr_value(*svr1).value_type){
+	case E_Sce_Run_Null_Value:
+		get_vm_error_status(
+			*sce_vm_context,
+			"left hand is null value."
+		);
+		break;
+	case E_Sce_Run_Virtual_Value:
+		set_register_bool_value(*svrr, false);
+		break;
+	case E_Sce_Run_Bool_Value:
+		set_register_bool_value(*svrr, access_svr_bvalue(*svr1));
+		break;
+	case E_Sce_Run_Char_Value:
+		set_register_bool_value(*svrr, (bool)access_svr_cvalue(*svr1));
+		break;
+	case E_Sce_Run_Int_Value:
+		set_register_bool_value(*svrr, (bool)access_svr_ivalue(*svr1));
+		break;
+
+	case E_Sce_Run_Float_Value:
+		set_register_bool_value(*svrr, (bool)access_svr_fvalue(*svr1));
+		break;
+	case E_Sce_Run_Double_Value:
+		set_register_bool_value(*svrr, (bool)access_svr_dvalue(*svr1));
+		break;
+	case E_Sce_Run_String_Value:
+		set_register_bool_value(*svrr, (bool)access_svr_ssvalue(*svr1)->index__);
+		break;
+	case E_Sce_Run_Obj_Value:
+		set_register_bool_value(*svrr, true);
+
+		break;
+	case E_Sce_Run_Mem_Value:
+		set_register_bool_value(*svrr, true);
+		break;
+	default:
+		assert(false);
+	}
+	delete_sce_run_virtual_memory(t_svr1);
+
+}
+static void eq_sce_vm_context(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions * inst_) {
+	Sce_Virutal_Register* svr1 = get_svr(sce_vm_context, inst_->ope1);
+	Sce_Virutal_Register* svr2 = get_svr(sce_vm_context, inst_->ope2);
+	Sce_Virutal_Register* tmp_svr1 = svr1;
+	Sce_Virutal_Register* tmp_svr2 = svr2;
+	Sce_Virutal_Register* svrr = get_svr(sce_vm_context, SCE_VIRTUAL_REGISTER_CMP_RETURN);
+	if (is_svr_value_type(*svr1, E_Sce_Run_Mem_Value)) tmp_svr1 = access_svr_mvalue(*tmp_svr1);
+	if (is_svr_value_type(*svr2, E_Sce_Run_Mem_Value)) tmp_svr2 = access_svr_mvalue(*tmp_svr2);
+	if (svr1->sce_run_value.value_type == svr2->sce_run_value.value_type) {
+		switch (svr1->sce_run_value.value_type){
+		case E_Sce_Run_Null_Value:
+			get_vm_error_status(
+				*sce_vm_context,
+				"left hand is Null Value"
+			);
+			break;
+		case E_Sce_Run_Virtual_Value:
+			set_register_bool_value(*svrr, true);
+		case E_Sce_Run_Bool_Value:
+			set_register_bool_value(*svrr, access_svr_bvalue(*svr1) == access_svr_bvalue(*svr2));
+			break;
+		case E_Sce_Run_Char_Value:
+			set_register_bool_value(*svrr, access_svr_cvalue(*svr1) == access_svr_cvalue(*svr2));
+			break;
+		case E_Sce_Run_Int_Value:
+			set_register_bool_value(*svrr, access_svr_ivalue(*svr1) == access_svr_ivalue(*svr2));
+			break;
+
+		case E_Sce_Run_Float_Value:
+			set_register_bool_value(*svrr, access_svr_fvalue(*svr1) == access_svr_fvalue(*svr2));
+			break;
+
+		case E_Sce_Run_Double_Value:
+			set_register_bool_value(*svrr, access_svr_dvalue(*svr1) == access_svr_dvalue(*svr2));
+			break;
+		case E_Sce_Run_String_Value:
+
+			set_register_bool_value(*svrr, is_same_u8_string_buffers(access_svr_ssvalue(*svr1), access_svr_ssvalue(*svr2)));
+			break;
+		default:
+			break;
+		}
+	}
+	else {
+		switch (svr1->sce_run_value.value_type) {
+		case E_Sce_Run_Null_Value:
+			get_vm_error_status(
+				*sce_vm_context,
+				"left hand is Null Value"
+			);
+			break;
+		case E_Sce_Run_Virtual_Value:
+			switch (svr2->sce_run_value.value_type) {
+
+			case E_Sce_Run_Null_Value:
+				get_vm_error_status(
+					*sce_vm_context,
+					"left hand is Null Value"
+				);
+				break;
+			default:
+				set_register_bool_value(*svrr, false);
+				break;
+			}
+		case E_Sce_Run_Bool_Value:
+			switch (svr2->sce_run_value.value_type) {
+
+			case E_Sce_Run_Null_Value:
+				get_vm_error_status(
+					*sce_vm_context,
+					"left hand is Null Value"
+				);
+				break;
+			case E_Sce_Run_Char_Value:
+				set_register_bool_value(*svrr, (uint8_t)access_svr_bvalue(*svr1) == access_svr_cvalue(*svr2));
+				break;
+			case E_Sce_Run_Int_Value:
+				set_register_bool_value(*svrr, (int64_t)access_svr_bvalue(*svr1) == access_svr_ivalue(*svr2));
+				break;
+			case E_Sce_Run_Float_Value:
+				set_register_bool_value(*svrr, (float)access_svr_bvalue(*svr1) == access_svr_fvalue(*svr2));
+				break;
+
+			case E_Sce_Run_Double_Value:
+				set_register_bool_value(*svrr, (double)access_svr_bvalue(*svr1) == access_svr_dvalue(*svr2));
+				break;
+			case E_Sce_Run_String_Value:
+			case E_Sce_Run_Obj_Value:
+			case E_Sce_Run_Mem_Value:
+				set_register_bool_value(*svrr, false);
+				break;
+
+			default:
+				assert(false);
+			}
+		case E_Sce_Run_Char_Value:
+
+			switch (svr2->sce_run_value.value_type) {
+
+			case E_Sce_Run_Null_Value:
+				get_vm_error_status(
+					*sce_vm_context,
+					"left hand is Null Value"
+				);
+				break;
+			case E_Sce_Ast_Bool_Value:
+				set_register_bool_value(*svrr, access_svr_cvalue(*svr1) == (uint8_t)access_svr_bvalue(*svr2));
+				break;
+			case E_Sce_Run_Int_Value:
+				set_register_bool_value(*svrr, (int64_t)access_svr_cvalue(*svr1) == access_svr_ivalue(*svr2));
+				break;
+			case E_Sce_Run_Float_Value:
+				set_register_bool_value(*svrr, (float)access_svr_cvalue(*svr1) == access_svr_fvalue(*svr2));
+				break;
+
+			case E_Sce_Run_Double_Value:
+				set_register_bool_value(*svrr, (double)access_svr_cvalue(*svr1) == access_svr_dvalue(*svr2));
+				break;
+			case E_Sce_Run_String_Value:
+			case E_Sce_Run_Obj_Value:
+			case E_Sce_Run_Mem_Value:
+				set_register_bool_value(*svrr, false);
+				break;
+
+			default:
+				assert(false);
+			}
+		case E_Sce_Run_Int_Value:
+
+			switch (svr2->sce_run_value.value_type) {
+
+			case E_Sce_Run_Null_Value:
+				get_vm_error_status(
+					*sce_vm_context,
+					"left hand is Null Value"
+				);
+				break;
+			case E_Sce_Ast_Bool_Value:
+				set_register_bool_value(*svrr, access_svr_ivalue(*svr1) == (int64_t)access_svr_bvalue(*svr2));
+				break;
+			case E_Sce_Ast_Char_Value:
+				set_register_bool_value(*svrr, access_svr_ivalue(*svr1) == (int64_t)access_svr_cvalue(*svr2));
+				break;
+			case E_Sce_Run_Float_Value:
+				set_register_bool_value(*svrr, (float)access_svr_ivalue(*svr1) == access_svr_fvalue(*svr2));
+				break;
+
+			case E_Sce_Run_Double_Value:
+				set_register_bool_value(*svrr, (double)access_svr_ivalue(*svr1) == access_svr_dvalue(*svr2));
+				break;
+			case E_Sce_Run_String_Value:
+			case E_Sce_Run_Obj_Value:
+			case E_Sce_Run_Mem_Value:
+				set_register_bool_value(*svrr, false);
+				break;
+			default:
+				assert(false);
+			}
+		case E_Sce_Run_Float_Value:
+
+			switch (svr2->sce_run_value.value_type) {
+
+			case E_Sce_Run_Null_Value:
+				get_vm_error_status(
+					*sce_vm_context,
+					"left hand is Null Value"
+				);
+				break;
+			case E_Sce_Ast_Bool_Value:
+				set_register_bool_value(*svrr, access_svr_fvalue(*svr1) == (float)access_svr_bvalue(*svr2));
+				break;
+			case E_Sce_Ast_Char_Value:
+				set_register_bool_value(*svrr, access_svr_fvalue(*svr1) == (float)access_svr_cvalue(*svr2));
+				break;
+			case E_Sce_Run_Int_Value:
+				set_register_bool_value(*svrr, access_svr_fvalue(*svr1) == (float)access_svr_ivalue(*svr2));
+				break;
+			case E_Sce_Run_Double_Value:
+				set_register_bool_value(*svrr, (double)access_svr_fvalue(*svr1) == access_svr_dvalue(*svr2));
+				break;
+			case E_Sce_Run_String_Value:
+			case E_Sce_Run_Obj_Value:
+			case E_Sce_Run_Mem_Value:
+				set_register_bool_value(*svrr, false);
+				break;
+
+			default:
+				assert(false);
+			}
+		case E_Sce_Run_Double_Value:
+
+			switch (svr2->sce_run_value.value_type) {
+
+			case E_Sce_Run_Null_Value:
+				get_vm_error_status(
+					*sce_vm_context,
+					"left hand is Null Value"
+				);
+				break;
+			case E_Sce_Ast_Bool_Value:
+				set_register_bool_value(*svrr, access_svr_dvalue(*svr1) == (double)access_svr_bvalue(*svr2));
+				break;
+			case E_Sce_Ast_Char_Value:
+				set_register_bool_value(*svrr, access_svr_dvalue(*svr1) == (double)access_svr_cvalue(*svr2));
+				break;
+			case E_Sce_Run_Int_Value:
+				set_register_bool_value(*svrr, access_svr_dvalue(*svr1) == (double)access_svr_ivalue(*svr2));
+				break;
+			case E_Sce_Run_Float_Value:
+				set_register_bool_value(*svrr, access_svr_dvalue(*svr1) == (double)access_svr_fvalue(*svr2));
+				break;
+			case E_Sce_Run_String_Value:
+			case E_Sce_Run_Obj_Value:
+			case E_Sce_Run_Mem_Value:
+				set_register_bool_value(*svrr, false);
+				break;
+
+			default:
+				assert(false);
+			}
+		case E_Sce_Run_String_Value:
+		case E_Sce_Run_Obj_Value:
+		case E_Sce_Run_Mem_Value:
+			set_register_bool_value(*svrr, false);
+
+			break;
+		default:
+
+			assert(false);
+
+		}
+	}
+	delete_sce_run_virtual_memory(tmp_svr1);
+	delete_sce_run_virtual_memory(tmp_svr2);
+}
+#define svrs_access_begin(svrs__) (svrs__ + 1)
 static void run_collect_label_sce_vm_context(Sce_Run_VM_Context* sce_vm_context) {
 	uint8_t is_label_mode = 0x0;
 	while (sce_vm_context->inst_) {
@@ -596,9 +926,112 @@ static void run_collect_label_sce_vm_context(Sce_Run_VM_Context* sce_vm_context)
 	}
 
 }
+static void sce_save_register_to_stack(Sce_Virutal_Register* svrs, Sce_Virtual_Stacks* stacks, Sce_Binary_Machine_Instructions* sce_inst, Sce_Run_VM_Error_Status* error_status) {
+	Sce_Virtual_Memory* stacks_ = smart_realloc(Sce_Virtual_Memory, stacks->stack_mem_, stacks->stack_size_ + sce_inst->ope1);
+	if (!stacks_) {
 
+		GET_ERROR_STRING(
+			error_status->error_str,
+			"failed to stack alloc memory."
+		);
+		return;
+	}
+
+	stacks->stack_mem_ = stacks_;
+	smart_memcpy_p(stacks->stack_mem_ + stacks->stack_size_, svrs_access_begin(svrs), Sce_Virtual_Memory, sce_inst->ope1);
+	stacks->stack_size_ = stacks->stack_size_ + sce_inst->ope1;
+}
+
+static void sce_load_register_to_stack(Sce_Virutal_Register* svrs, Sce_Virtual_Stacks* stacks, Sce_Binary_Machine_Instructions* sce_inst, Sce_Run_VM_Error_Status* error_status) {
+	if (stacks->stack_size_ < sce_inst->ope1) {
+		GET_ERROR_STRING(
+			error_status->error_str,
+			"stack underflow."
+		);
+		return;
+	}
+	smart_memcpy_p(svrs_access_begin(svrs), stacks->stack_mem_ + stacks->stack_size_ - sce_inst->ope1, Sce_Virtual_Memory, sce_inst->ope1);
+	if (stacks->stack_size_ - sce_inst->ope1) {
+		Sce_Virtual_Memory* stacks_ = smart_realloc(Sce_Virtual_Memory, stacks->stack_mem_, stacks->stack_size_ - sce_inst->ope1);
+		if (!stacks_) {
+			GET_ERROR_STRING(
+				error_status->error_str,
+				"failed to stack alloc memory."
+			);
+			return;
+
+		}
+		stacks->stack_mem_ = stacks_;
+	}
+	else s_free(stacks->stack_mem_);
+	stacks->stack_size_  -= sce_inst->ope1;
+}
+static void call_sce_label(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
+	Sce_Built_In_Label* built_in_label = search_built_in_label_name(&vm_context->root_symbol.built_in_table, sce_inst->scope2);
+	if (built_in_label) {
+		built_in_label->label_adress(sce_inst->ope1, vm_context->svrs_.svr, &vm_context->vm_error_status);
+
+		return;
+	}
+	if (&vm_context->root_symbol == vm_context->now_vm_symbol_) goto GLOBAL_SKIP_BUILT;
+	built_in_label = search_built_in_label_name(&vm_context->now_vm_symbol_->built_in_table, sce_inst->scope2);
+GLOBAL_SKIP_BUILT:
+	if (built_in_label) {
+		built_in_label->label_adress(sce_inst->ope1, vm_context->svrs_.svr, &vm_context->vm_error_status);
+		return;
+	}
+	Sce_VM_Label_Table* label_;
+	label_ = search_label_name(vm_context->now_vm_symbol_->label_table_, sce_inst->scope2);
+	if (!label_) {
+		GET_ERROR_STRING(
+			vm_context->vm_error_status.error_str,
+			"%s function is not defined.",
+			sce_inst->scope2
+		);
+		return;
+	}
+	vm_context->now_vm_symbol_->sce_stack_.stack_point_ = vm_context->now_vm_symbol_->sce_stack_.stack_size_;
+}
+static void add_stack_point_sce_vm_context(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
+	Sce_Virtual_Memory* stacks_ = smart_realloc(
+		Sce_Virtual_Memory, vm_context->now_vm_symbol_->sce_stack_.stack_mem_, vm_context->now_vm_symbol_->sce_stack_.stack_size_ + sce_inst->ope2);
+	if (!stacks_) {
+
+		GET_ERROR_STRING(
+			vm_context->vm_error_status.error_str,
+			"failed to stack alloc memory."
+		);
+		return;
+	}
+
+	vm_context->now_vm_symbol_->sce_stack_.stack_mem_ = stacks_;
+	vm_context->now_vm_symbol_->sce_stack_.stack_size_ += sce_inst->ope2;
+}
+
+static void sub_stack_point_sce_vm_context(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
+	if (vm_context->now_vm_symbol_->sce_stack_.stack_size_ < sce_inst->ope1) {
+		GET_ERROR_STRING(
+			vm_context->vm_error_status.error_str,
+			"stack undeflow."
+		);
+		return;
+	}
+	if (vm_context->now_vm_symbol_->sce_stack_.stack_size_ - sce_inst->ope1) {
+		Sce_Virtual_Memory* stacks_ = smart_realloc(
+			Sce_Virtual_Memory, vm_context->now_vm_symbol_->sce_stack_.stack_mem_, vm_context->now_vm_symbol_->sce_stack_.stack_size_ - sce_inst->ope1);
+		if (!stacks_) {
+			GET_ERROR_STRING(
+				vm_context->vm_error_status.error_str,
+				"failed to stack alloc memory."
+			);
+			return;
+		}
+		vm_context->now_vm_symbol_->sce_stack_.stack_mem_ = stacks_;
+	}
+	else s_free(vm_context->now_vm_symbol_->sce_stack_.stack_mem_);
+	vm_context->now_vm_symbol_->sce_stack_.stack_size_ -= sce_inst->ope1;
+}
 static void run_sce_vm_context_basic(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
-
 	while (sce_inst) {
 
 		switch (
@@ -606,6 +1039,33 @@ static void run_sce_vm_context_basic(Sce_Run_VM_Context* sce_vm_context, Sce_Bin
 			) {
 		case E_SCE_BINARY_INST_ADD__:
 			add_sce_vm(sce_vm_context, sce_inst);
+			break;
+		case E_SCE_BINARY_INST_SUB__:
+			sub_sce_vm(sce_vm_context, sce_inst);
+			break;
+		case E_SCE_BINARY_INST_CALL__:
+			call_sce_label(sce_vm_context, sce_inst);
+			break;
+
+		case E_SCE_BINARY_INST_SAVE_REGISTER_STACK__:
+			sce_save_register_to_stack(sce_vm_context->svrs_.svr, &sce_vm_context->now_vm_symbol_->sce_stack_, sce_inst, &sce_vm_context->vm_error_status);
+			break;
+		case E_SCE_BINARY_INST_LOAD_REGISTER_STACK__:
+			sce_load_register_to_stack(sce_vm_context->svrs_.svr, &sce_vm_context->now_vm_symbol_->sce_stack_, sce_inst, &sce_vm_context->vm_error_status);
+			break;
+		case E_SCE_BINARY_INST_ADD_STACK__:
+			add_stack_point_sce_vm_context(sce_vm_context, sce_inst);
+			break;
+		case E_SCE_BINARY_INST_SUB_STACK__:
+			sub_stack_point_sce_vm_context(sce_vm_context, sce_inst);
+
+			break;
+
+		case E_SCE_BINARY_INST_TEST__:
+			test_sce_vm_context(sce_vm_context, sce_inst);
+			break;
+		case E_SCE_BINARY_INST_EQ__:
+			eq_sce_vm_context(sce_vm_context, sce_inst);
 			break;
 		case E_SCE_BINARY_INST_JMP__: {
 			int i;
@@ -639,9 +1099,6 @@ static void run_sce_vm_context_basic(Sce_Run_VM_Context* sce_vm_context, Sce_Bin
 			else assert(false);
 		}
 									break;
-		case E_SCE_BINARY_INST_CALL__:
-			/*TODO:*/
-			break;
 		case E_SCE_BINARY_INST_DELETE_REGISTER__:
 			delete_sce_run_virtual_memory(&sce_vm_context->svrs_.svr[SCE_VIRTUAL_REGISTER_RETURN]);
 			break;
@@ -732,6 +1189,7 @@ Sce_Run_VM_Context start_sce_vm_context(Sce_Binary_Machine_Instructions* sce_vm_
 	sce_vm_context.inst_ = sce_vm_inst;
 	run_collect_label_sce_vm_context(&sce_vm_context);
 	global_start_sce_vm_context(&sce_vm_context);
+	set_global_built_in_function(&sce_vm_context);
 	return sce_vm_context;
 }
 void run_sce_vm_context(Sce_Run_VM_Context* sce_vm_context, const uint8_t* name_) {
@@ -824,12 +1282,14 @@ static void sce_read_system_call(Sce_Run_VM_Context* vm_context, Sce_Virutal_Reg
 		append_u8_byte_u8_string_buffer(svr1->sce_run_value.ssvalue, c_);
 	}
 }
+/*
 void delete_sce_registers(Sce_Run_VM_Context* vm_context, uint32_t size_) {
 	for (uint32_t i = 0; i < size_; ++i) {
 		Sce_Virutal_Register* c_svr = &vm_context->svrs_.svr[i];
 		delete_sce_run_virtual_memory(c_svr);
 	}
 }
+*/
 void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
 	Sce_Virutal_Register* system_call_idx =
 		get_svr(vm_context, 1);
@@ -842,7 +1302,7 @@ void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instr
 					system_call_write_args__,
 					sce_inst->ope1
 				);
-				delete_sce_registers(vm_context, sce_inst->ope1);
+				delete_sce_vm_registers(vm_context, sce_inst->ope1);
 				return;
 			}
 			Sce_Virutal_Register* args1 =
@@ -886,7 +1346,7 @@ void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instr
 			if (!is_ref) {
 				s_free(arg_buf);
 			}
-			delete_sce_registers(vm_context, system_call_write_args__);
+			delete_sce_vm_registers(vm_context, system_call_write_args__);
 			access_vm_ctx_svr(*vm_context, SCE_VIRTUAL_REGISTER_RETURN).is_const_value = IS_CONST_MEMORY;
 			access_vm_ctx_svr(*vm_context, SCE_VIRTUAL_REGISTER_RETURN).sce_run_value.value_type = E_Sce_Run_Int_Value;
 			access_vm_ctx_svr(*vm_context, SCE_VIRTUAL_REGISTER_RETURN).sce_run_value.ivalue = res;
@@ -899,7 +1359,7 @@ void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instr
 					system_call_read_args__,
 					sce_inst->ope1
 				);
-				delete_sce_registers(vm_context, sce_inst->ope1);
+				delete_sce_vm_registers(vm_context, sce_inst->ope1);
 				return;
 			}
 			Sce_Virutal_Register* args1 =
@@ -927,7 +1387,7 @@ void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instr
 			}
 
 			sce_read_system_call(vm_context, &access_vm_ctx_svr(*vm_context, SCE_VIRTUAL_REGISTER_RETURN), arg_file_obj);
-			delete_sce_registers(vm_context, system_call_read_args__);
+			delete_sce_vm_registers(vm_context, system_call_read_args__);
 
 		}
 		if (get_svr_ivalue(*system_call_idx) == SYSTEM_CALL_OPEN) {
@@ -939,7 +1399,7 @@ void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instr
 					system_call_open_args__,
 					sce_inst->ope1
 				);
-				delete_sce_registers(vm_context, sce_inst->ope1);
+				delete_sce_vm_registers(vm_context, sce_inst->ope1);
 				return;
 			}
 
@@ -973,7 +1433,7 @@ void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instr
 			default:
 				break;
 			}
-			delete_sce_registers(vm_context, system_call_open_args__);
+			delete_sce_vm_registers(vm_context, system_call_open_args__);
 
 		}
 	}
@@ -1010,16 +1470,6 @@ void div_svr_value(Sce_Run_VM_Error_Status* error_status, Sce_Virtual_Memory* me
 }
 
 void mod_svr_value(Sce_Run_VM_Error_Status* error_status, Sce_Virtual_Memory* mem1, Sce_Virutal_Register* mem2) {
-
-}
-void sub_svr_value(Sce_Run_VM_Error_Status* error_status, Sce_Virtual_Memory* mem1, Sce_Virutal_Register* mem2) {
-	Sce_Virtual_Memory* tmp_mem2 = mem2;
-
-	operator_sce_function_vm(
-		-,
-		"Subtraction"
-	)
-	delete_sce_run_virtual_memory(tmp_mem2);
 
 }
 void add_svr_value(Sce_Run_VM_Error_Status * error_status, Sce_Virtual_Memory* mem1, Sce_Virutal_Register* mem2) {
@@ -1135,7 +1585,7 @@ void add_svr_value(Sce_Run_VM_Error_Status * error_status, Sce_Virtual_Memory* m
 		case E_Sce_Run_String_Value:
 			switch (mem2->sce_run_value.value_type) {
 			case E_Sce_Run_Int_Value:
-				to_u32_u8strbuf(
+				to_d64_u8strbuf(
 					mem1->sce_run_value.ssvalue,
 					mem2->sce_run_value.ivalue
 				);
@@ -1339,7 +1789,7 @@ void add_svr_value(Sce_Run_VM_Error_Status * error_status, Sce_Virtual_Memory* m
 				mem1->sce_run_value.ssvalue->index__ = 0;
 				mem1->sce_run_value.ssvalue->size__ = 0;
 				mem1->sce_run_value.ssvalue->str__ = NULL;
-				to_u32_u8strbuf(
+				to_d64_u8strbuf(
 					mem1->sce_run_value.ssvalue,
 					v_
 				);
@@ -1708,7 +2158,7 @@ void fmov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instruct
 void imov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst) {
 	Sce_Virutal_Register* svr1 =
 		get_svr(sce_vm_context, sce_inst->ope1);
-	int64_t ibuf = sce_inst->icope2;
+	uint64_t ibuf = sce_inst->icope2;
 	if (svr1) {
 		svr1->is_const_value = true;
 		svr1->sce_run_value.value_type = E_Sce_Run_Int_Value;
@@ -1743,6 +2193,7 @@ static void rmov_sce_vm_basic(Sce_Virutal_Register * rv1, Sce_Virutal_Register *
 	*
 	*/
 	if (is_svr_type(rv1, E_Sce_Run_Mem_Value)) {
+
 		delete_sce_run_virtual_memory(rv1->sce_run_value.mvalue);
 		if (is_svr_type(rv2, E_Sce_Run_Mem_Value)) {
 
@@ -1762,6 +2213,7 @@ static void rmov_sce_vm_basic(Sce_Virutal_Register * rv1, Sce_Virutal_Register *
 			access_svr_mvalue(*rv1)->sce_run_value
 			= access_svr_mvalue(*rv2)->sce_run_value;
 			access_svr_mvalue(*rv1)->is_const_value = IS_CONST_MEMORY;
+
 		}
 		else {
 			*access_svr_mvalue(*rv1) = *rv2;
@@ -1938,9 +2390,15 @@ void mov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructi
 }
 
 void set_lable_name_sce_vm(Sce_Run_VM_Context* sce_vm_context) {
+	Sce_Built_In_Label* built_in = search_built_in_label_name(
+		&sce_vm_context->vm_symbol_->built_in_table, 
+		sce_vm_context->inst_->scope2
+	);
+	if (built_in) goto Sce_Error_Label;
 	Sce_VM_Label_Table* vm_label = search_label_name(
 		sce_vm_context->vm_symbol_->label_table_, sce_vm_context->inst_->scope2
 	);
+
 	if (!vm_label) {
 		Sce_VM_Label_Table* vm_label = smart_malloc(Sce_VM_Label_Table, 1);
 		if (!vm_label) return;
@@ -1950,6 +2408,7 @@ void set_lable_name_sce_vm(Sce_Run_VM_Context* sce_vm_context) {
 
 	}
 	else {
+		Sce_Error_Label:
 		get_vm_error_status(
 			*sce_vm_context,
 			"Label %s redefined.",

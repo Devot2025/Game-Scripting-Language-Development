@@ -102,6 +102,11 @@ static inline void print_sce_ir(Sce_Binary_Machine_Instructions * sce_bm_inst, b
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_SYSTEM_CALL__) {
 		}
 
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_TEST__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+		}
+
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_MOV__) {
 			printf(GET_PRINT_STR_SVR(next_->ope1));
 			printf("&%s ", next_->scope2);
@@ -113,7 +118,7 @@ static inline void print_sce_ir(Sce_Binary_Machine_Instructions * sce_bm_inst, b
 		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_IMOV__) {
 			printf(GET_PRINT_STR_SVR(next_->ope1));
-			printf("%i ", next_->icope2);
+			printf("%lld ", next_->icope2);
 
 		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_BMOV__) {
@@ -167,6 +172,16 @@ static inline void print_sce_ir(Sce_Binary_Machine_Instructions * sce_bm_inst, b
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_SAVE_REGISTER__) {
 			printf("%u ", next_->ope1);
 			printf("%u ", next_->ope2);
+
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_ADD_STACK__) {
+			printf("%u ", next_->ope1);
+
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_SUB_STACK__) {
+			printf("%u ", next_->ope1);
 
 		}
 

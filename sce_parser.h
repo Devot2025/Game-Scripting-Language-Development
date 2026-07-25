@@ -70,8 +70,8 @@ CONVERT_FUNC(E_Sce_Ast_Error)
 
 #define E_SCE_AST_STSRING_OFFSET 10
 #define GET_SCE_AST_STRING(ast) debug_sce_ast_strs[ast->data.ast_type] + E_SCE_AST_STSRING_OFFSET
-#define CONVERT_DEFINE_STR(name) #name
-#define CONVERT_DEFINE(name) name
+//#define CONVERT_DEFINE_STR(name) #name
+//#define CONVERT_DEFINE(name) name
 typedef enum Sce_Ast_Type {
 	SET_SCE_AST_TYPE(CONVERT_DEFINE)
 }Sce_Ast_Type;

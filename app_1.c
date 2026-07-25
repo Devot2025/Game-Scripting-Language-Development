@@ -16,18 +16,24 @@ int main(void) {
 	for (uint32_t i = 0; i < sce_lex.token_index; ++i) {
 		printf("%u %s\n", i, sce_lex.tokens[i].sce_token_str.str__);
 	}
-
 	Sce_Ast_Node* sce_ast = start_build_sce_ast(&sce_lex);
 	s_free(buf);
 	start_print_ast_debug(sce_ast);
 	delete_lexer_sce_lists(&sce_lex);
+
 	bool ir_is_error;
 	Sce_Binary_Machine_Instructions* ir = sce_start_build_binary_run_code(&ir_is_error, sce_ast);
 	delete_sce_ast_node(sce_ast);
-	if (ir_is_error) return -1;
+	if (ir_is_error) {
+		putchar('\n');
+		putchar('\n');
+		printf("Syntax Error\n");
+		printf("Press any key to continue... ");
+		(void)getc(stdin);
+		return -1;
+	}
 	print_sce_ir(ir, false);
 	Sce_Run_VM_Context vm_context = start_sce_vm_context(ir);
-
 	putchar('\n');
 	putchar('\n');
 	printf("SCE FILE NAME test.sce\n");
@@ -37,11 +43,14 @@ int main(void) {
 	run_sce_vm_context(&vm_context, (const uint8_t *)"EVENT1");
 	putchar('\n');
 	putchar('\n');
+	printf("-------------------------------------------------------\n");
+	printf("-------------------------------------------------------\n");
+	putchar('\n');
+	putchar('\n');
 
-	printf("-------------------------------------------------------\n");
-	printf("-------------------------------------------------------\n");
 	delete_sce_run_vm_context(&vm_context);
-	//Sce_Binary_Machine_Instructions* sc_i = sce_start_build_binary_run_code(sce_ast);
+	printf("Press any key to continue... ");
+	(void)getc(stdin);
 
 	return 0;
 }
