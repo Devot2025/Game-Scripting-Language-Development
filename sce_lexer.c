@@ -33,7 +33,7 @@ bool is_sce_token_keyword(const uint8_t* sce_token) {
 	const uint8_t* sce_keyword_tokens[]
 		= {
 		"while", "if", "else", "name", "next", "start", "main", "end", "exit", "once", "repeat",
-		"bool", "char", "int", "float", "str", "vec2", "vec3", "vec4", "quat", "obj", 
+		"bool", "char", "int", "float", "str", "vec2", "vec3", "vec4", "quat", "obj", "return",
 		NULL
 	};
 	const uint8_t** sce_keyword_token = sce_keyword_tokens;
@@ -94,10 +94,10 @@ Sce_Lexer_Token_Lists start_lexer_sce(const uint8_t* sce_code) {
 	Sce_Lexer_Token_Lists sce_lexer_token_lists;
 	init_u8_string_buffers(&stack_buffers, 20);
 	init_lexer_sce_lists(&sce_lexer_token_lists, 20);
+	bool literal_sub_modes = false;
 	while (*sce_code) {
 		uint8_t byte_ = *sce_code;
-
-		if (now_mode == E_Sce_Lexer_Normal_Mode) split_normal_sce_token(byte_, &sce_lexer_token_lists, &now_mode, &stack_buffers);
+		if (now_mode == E_Sce_Lexer_Normal_Mode) split_normal_sce_token(byte_, &sce_lexer_token_lists, &now_mode, &stack_buffers, &literal_sub_modes);
 		else if (now_mode == E_Sce_Lexer_Operator_Mode) { if (!split_operator_sce_token(byte_, &sce_lexer_token_lists, &now_mode, &stack_buffers))continue; }
 		else if (now_mode == E_Sce_Lexer_Dot_Mode) { if (split_dot_sce_token(byte_, &sce_lexer_token_lists, &now_mode, &stack_buffers)) continue; }
 		else if (now_mode == E_Sce_Lexer_Start_String_Mode) { split_start_string_sce_token(byte_, &now_mode, &stack_buffers); }
@@ -121,7 +121,7 @@ Sce_Lexer_Token_Lists start_lexer_sce(const uint8_t* sce_code) {
 	return sce_lexer_token_lists;
 }
 
-void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers) {
+void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, bool * array_literal_mode) {
 	if (u8byte_str__(sce_byte__, ";(){}")) {
 		append_lexer_token_lists(sce_lexer_token_lists, stack_buffers, E_Sce_Lexer_NULL);
 		append_u8_byte_u8_string_buffer(stack_buffers, sce_byte__);
@@ -144,6 +144,20 @@ void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce
 	else if (sce_byte__ == '\'') {
 		append_lexer_token_lists(sce_lexer_token_lists, stack_buffers, E_Sce_Lexer_NULL);
 		*now_mode__ = E_Sce_Lexer_Start_Char_Mode;
+	}
+
+	else if (sce_byte__ == '`') {
+		if (*array_literal_mode) {
+			append_lexer_token_lists(sce_lexer_token_lists, stack_buffers, E_Sce_Lexer_NULL);
+			append_u8_byte_u8_string_buffer(stack_buffers, '}');
+			append_lexer_token_lists(sce_lexer_token_lists, stack_buffers, E_Sce_Lexer_Punchcute);
+		}
+		else {
+			append_lexer_token_lists(sce_lexer_token_lists, stack_buffers, E_Sce_Lexer_NULL);
+			append_u8_byte_u8_string_buffer(stack_buffers, '{');
+			append_lexer_token_lists(sce_lexer_token_lists, stack_buffers, E_Sce_Lexer_Punchcute);
+		}
+		*array_literal_mode = !*array_literal_mode;
 	}
 	else if (sce_byte__ == '.') *now_mode__ = E_Sce_Lexer_Dot_Mode;
 	else if (sce_byte__ == '@') *now_mode__ = E_Sce_Comment_Mode;

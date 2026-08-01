@@ -36,7 +36,7 @@ sce_built_in_basic_define(sqrt) {
 			access_svr_dvalue(*svrr) = sqrt((double)access_svr_ivalue(*svr1)); break; ,
 			access_svr_dvalue(*svrr) = sqrt((double)access_svr_fvalue(*svr1)); break; ,
 			access_svr_dvalue(*svrr) = sqrt(access_svr_dvalue(*svr1)); break; ,
-			,,
+			,,,
 			GET_ERROR_STRING(
 				dst_->error_str,
 				"%s type is Invalid.",

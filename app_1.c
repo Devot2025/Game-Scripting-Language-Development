@@ -7,7 +7,6 @@
 
 uint8_t* load_files(const uint8_t* paths);
 uint8_t* insert_std_code(uint8_t* buf);
-
 int main(void) {
 
 	uint8_t* buf = load_files("test.sce");

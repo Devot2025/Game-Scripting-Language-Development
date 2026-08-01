@@ -16,7 +16,8 @@ sce_si_strap void print_ast_debug(Sce_Ast_Node* ast, const uint8_t * prefix, boo
 		is_sce_ast_type(ast, E_Sce_Ast_Iden) ||
 		is_sce_ast_type(ast, E_Sce_Ast_Var_Decl) ||
 		is_sce_ast_type(ast, E_Sce_Ast_Function_Decl) ||
-		is_sce_ast_type(ast, E_Sce_Ast_Name_Statement_Decl)
+		is_sce_ast_type(ast, E_Sce_Ast_Name_Statement_Decl) ||
+		is_sce_ast_type(ast, E_Sce_Ast_Parameter_Args_Decl)
 		) {
 
 		printf("(\x1b[31m%s\x1b[0m)", (const uint8_t*)ast->data.buf);

@@ -19,15 +19,17 @@
 #endif
 #define auto_struct(Name, Implemenet) typedef struct Name{Implemenet}Name
 #define GET_VM_CONTEXT_INST_NAME(inst_) (inst_).scope2
-
-sce_si_strap Sce_Virutal_Register * get_svr(Sce_Run_VM_Context* sce_vm_context, uint32_t idx) {
-	if (idx >= SCE_VIRTUAL_REGISTER_MAX_) {
-		idx -= SCE_VIRTUAL_REGISTER_MAX_ + sce_vm_context->now_vm_symbol_->sce_stack_.stack_point_;
-		return 
-		sce_vm_context->now_vm_symbol_->sce_stack_.stack_mem_ + idx;
-	}
-	return &sce_vm_context->svrs_.svr[idx];
-}
+/**
+* RV0.i = 0;
+* RV1.i = 1;
+* is_const = 0;
+* RV0.i = 0;
+* RV0.i = 0;
+*/
+#define is_memory_idx_register(idx) idx < SCE_VIRTUAL_REGISTER_MAX_
+#define is_memory_idx_general_register(idx) idx < SCE_VIRTUAL_GENERAL_REGISTER_MAX
+#define now_stack_idx(idx_, ctx_) (idx_ - SCE_VIRTUAL_REGISTER_MAX_) + (sce_vm_context).now_vm_symbol_->sce_stack_.stack_point_
+#define now_stack_mem(idx_, ctx_) (ctx_).now_vm_symbol_->sce_stack_.stack_mem_ + (ctx_).now_vm_symbol_->sce_stack_.stack_point_
 sce_si_strap void delete_sce_run_obj_context(Sce_VM_Object_Table* obj_table) {
 	while (obj_table) {
 
@@ -104,17 +106,10 @@ void run_collect_label_sce_vm_context(Sce_Run_VM_Context* sce_vm_context);
 void run_sce_vm_context(Sce_Run_VM_Context* sce_vm_context, const uint8_t* name_);
 
 void system_call_sce_vm(Sce_Run_VM_Context* vm_context, Sce_Binary_Machine_Instructions* sce_inst);
+void ralloc_sce_vm_context_local(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
 void alloc_sce_vm_context_local(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
 void alloc_sce_vm_context(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void add_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void smov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void bmov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void cmov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void fmov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void imov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void rmov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void mmov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
-void mov_sce_vm(Sce_Run_VM_Context* sce_vm_context, Sce_Binary_Machine_Instructions* sce_inst);
+
 void set_lable_name_sce_vm(Sce_Run_VM_Context* sce_vm_context);
 void set_module_name_sce_vm(Sce_Run_VM_Context* sce_vm_context);
 

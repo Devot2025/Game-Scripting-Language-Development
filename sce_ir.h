@@ -36,9 +36,12 @@ static const char main_label[]      = "%main";
 static const char end_label[]       = "%end";
 static const char exit_label[]      = "%exit";
 static const char if_label_prefix[] = "%%if%lu";
+
+static const char  end_while_label_prefix[] = "%%endwhile%lu";
 static const char left_hand_value_error[]        = "Error : The left-hand side value must be a substituted value.";
 static const char already_name_value_error[]     = "Error : %s is already defined.";
 static const char not_defined_name_value_error[] = "Error : %s is not defined.";
+static const char access_member_error[] = "Error : expect to ';'.";
 #define IF_LABEL_PREFIX_SIZE sizeof(if_label_prefix) - 1
 #define START_LABEL_PREFIX_SIZE sizeof(start_label) - 1
 #define MAIN_LABEL_PREFIX_SIZE sizeof(main_label) - 1

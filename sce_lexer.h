@@ -11,6 +11,7 @@ typedef enum Sce_Lexer_Mode {
 	E_Sce_Lexer_Start_String_Mode,
 	E_Sce_Lexer_Next_String_Mode,
 	E_Sce_Lexer_Doll_String_Mode,
+	E_Sce_Lexer_Array_Literal_Mode,
 	E_Sce_Comment_Mode,
 	E_Sce_Line_Comment_Mode,
 	E_Sce_Multi_Line_Comment_Start_Mode,
@@ -75,7 +76,7 @@ Sce_Lexer_Type get_lexer_token_type(const uint8_t* sce_token);
 void append_lexer_token_lists(Sce_Lexer_Token_Lists* sce_token_lists, U8_String_Buffers* stack_buffers, Sce_Lexer_Type sce_lexer_type);
 Sce_Lexer_Token_Lists start_lexer_sce(const uint8_t* sce_code);
 
-void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
+void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, bool* array_literal_mode);
 bool split_operator_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
 bool split_dot_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
 

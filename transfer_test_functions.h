@@ -1,5 +1,6 @@
 #pragma once
 #include "std_ext/ext_strs.h"
+#include <ctype.h>
 
 #define CONVERT_DEFINE_STR(name) #name
 #define CONVERT_DEFINE(name) name
@@ -33,7 +34,28 @@ static inline bool is_u8byte_utf8words(uint8_t byte__) {
 
 	return false;
 }
-
+static inline uint32_t advance_index_from_utf8_string(const uint8_t* sce_token) {
+	if (!sce_token) return 0;
+	if (*sce_token <= 0x7F) {
+		return 1;
+	}
+	else if ((*sce_token & 0xE0) == 0xC0) {
+		if ((sce_token[1] & 0xC0) != 0x80) return 0;
+		return 2;
+	}
+	else if ((*sce_token & 0xF0) == 0xE0) {
+		if ((sce_token[1] & 0xC0) != 0x80) return 0;
+		if ((sce_token[2] & 0xC0) != 0x80) return 0;
+		return 3;
+	}
+	else if ((*sce_token & 0xF8) == 0xF0) {
+		if ((sce_token[1] & 0xC0) != 0x80) return 0;
+		if ((sce_token[2] & 0xC0) != 0x80) return 0;
+		if ((sce_token[3] & 0xC0) != 0x80) return 0;
+		return 4;
+	}
+	return 0;
+}
 static inline bool is_utf8_string(const uint8_t* sce_token) {
 	if (!sce_token || !*sce_token) return false;
 
@@ -172,10 +194,47 @@ static inline U8_String_Buffers move_u8_byte_u8_string_bufferr(U8_String_Buffers
 			buf
 	};
 }
+static inline bool upper_u8_string_bufferr(U8_String_Buffers* u8_string_buffers) {
+	for (uint8_t* u_ = u8_string_buffers->str__; *u_;) {
+		uint32_t ad_ = advance_index_from_utf8_string(u_);
+		if (!ad_) return false;
+		else if (ad_ == 1) *u_ = (uint8_t)toupper((int)*u_);
+		u_ += ad_;
+	}
+	return true;
+}
+
+static inline bool lower_u8_string_bufferr(U8_String_Buffers* u8_string_buffers) {
+	for (uint8_t* u_ = u8_string_buffers->str__; *u_;) {
+		uint32_t ad_ = advance_index_from_utf8_string(u_);
+		if (!ad_) return false;
+		else if (ad_ == 1) *u_ = (uint8_t)tolower((int)*u_);
+		u_ += ad_;
+	}
+	return true;
+}
+
 static inline bool is_same_u8_string_buffers(U8_String_Buffers* u8_string_buffers_1, U8_String_Buffers* u8_string_buffers_2) {
 	if (u8_string_buffers_1->index__ != u8_string_buffers_2->index__) return false;
 	return smart_memsame(u8_string_buffers_1->str__, u8_string_buffers_2->str__, uint8_t, u8_string_buffers_1->index__);
 }
+
+static inline bool leq_u8_string_buffers(U8_String_Buffers* u8_string_buffers_1, U8_String_Buffers* u8_string_buffers_2) {
+	return strcmp(u8_string_buffers_1->str__, u8_string_buffers_2->str__) >= 0;
+}
+
+static inline bool ls_u8_string_buffers(U8_String_Buffers* u8_string_buffers_1, U8_String_Buffers* u8_string_buffers_2) {
+	return strcmp(u8_string_buffers_1->str__, u8_string_buffers_2->str__) > 0;
+}
+
+static inline bool gt_u8_string_buffers(U8_String_Buffers* u8_string_buffers_1, U8_String_Buffers* u8_string_buffers_2) {
+	return strcmp(u8_string_buffers_1->str__, u8_string_buffers_2->str__) < 0;
+}
+
+static inline bool geq_u8_string_buffers(U8_String_Buffers* u8_string_buffers_1, U8_String_Buffers* u8_string_buffers_2) {
+	return strcmp(u8_string_buffers_1->str__, u8_string_buffers_2->str__) <= 0;
+}
+
 #include <inttypes.h>
 #include <stdarg.h>
 

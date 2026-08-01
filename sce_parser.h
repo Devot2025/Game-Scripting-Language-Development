@@ -12,6 +12,7 @@ CONVERT_FUNC(E_Sce_Ast_Instance_Parameter),\
 CONVERT_FUNC(E_Sce_Ast_Call_Function),\
 CONVERT_FUNC(E_Sce_Ast_Function_Decl),\
 CONVERT_FUNC(E_Sce_Ast_Parameter_Args_Decl),\
+CONVERT_FUNC(E_Sce_Ast_Parameter_Args),\
 CONVERT_FUNC(E_Sce_Ast_Args),\
 CONVERT_FUNC(E_Sce_Ast_Global_Modules_Statement),\
 CONVERT_FUNC(E_Sce_Ast_Modules_Statement),\
@@ -58,6 +59,8 @@ CONVERT_FUNC(E_Sce_Ast_Int_Value),\
 CONVERT_FUNC(E_Sce_Ast_Float_Value),\
 CONVERT_FUNC(E_Sce_Ast_Double_Value),\
 CONVERT_FUNC(E_Sce_Ast_String_Value),\
+CONVERT_FUNC(E_Sce_Ast_List_Array_Value),\
+CONVERT_FUNC(E_Sce_Ast_List_Array_Access),\
 CONVERT_FUNC(E_Sce_Ast_Iden),\
 CONVERT_FUNC(E_Sce_Ast_Var_Decl),\
 CONVERT_FUNC(E_Sce_Ast_If),\
@@ -66,6 +69,8 @@ CONVERT_FUNC(E_Sce_Ast_Else_If),\
 CONVERT_FUNC(E_Sce_Ast_Else_If_Section),\
 CONVERT_FUNC(E_Sce_Ast_Else),\
 CONVERT_FUNC(E_Sce_Ast_Else_Section),\
+CONVERT_FUNC(E_Sce_Ast_While),\
+CONVERT_FUNC(E_Sce_Ast_While_Section),\
 CONVERT_FUNC(E_Sce_Ast_Error)
 
 #define E_SCE_AST_STSRING_OFFSET 10
@@ -179,7 +184,7 @@ Sce_Ast_Node* start_build_sce_ast(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_module(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 
 int get_end_block_process(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
-
+Sce_Ast_Node* build_sce_ast_loop_in_statement(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_expr_statement(Sce_Ast_Node* ast, Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_toplevel_statement(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_statement(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
@@ -219,12 +224,18 @@ Sce_Ast_Node* build_sce_ast_block_process(
 );
 Sce_Ast_Node* build_sce_ast_else(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_if_else(Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Ast_Type if_else_type);
+Sce_Ast_Node* build_sce_ast_loop_in_if_else(Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Ast_Type if_else_type);
+Sce_Ast_Node* build_sce_ast_loop_in_else(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_base_else(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_base_if_else(Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Ast_Type if_else_type);
 Sce_Ast_Node* build_sce_ast_base_if(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
+Sce_Ast_Node* build_sce_ast_loop_in_if(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
+Sce_Ast_Node* build_sce_ast_loop_in_keyword(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_if(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
+Sce_Ast_Node* build_sce_ast_loop_process(int* error_code, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Ast_Type sce_ast_block_type);
 Sce_Ast_Node* build_sce_ast_base_block_process(int* error_code, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Ast_Type sce_ast_block_type);
-
+Sce_Ast_Node* build_sce_ast_while(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
+Sce_Ast_Node* build_sce_ast_while_process(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_iden_decl(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 
 Sce_Ast_Node* build_sce_ast_expr_conmma(Sce_Lexer_Token_Lists* src_ans_token_list);
@@ -241,7 +252,7 @@ Sce_Ast_Node* build_sce_ast_mul_div_mod(Sce_Lexer_Token_Lists* src_ans_token_lis
 
 Sce_Ast_Node* build_sce_ast_sign_symbol(Sce_Lexer_Token_Lists* src_ans_token_list);
 Sce_Ast_Node* build_sce_ast_memebers(Sce_Lexer_Token_Lists* src_ans_token_list);
-
+Sce_Ast_Node* build_sce_ast_array_access(Sce_Lexer_Token_Lists* sce_lexer_token_lists);
 Sce_Ast_Node* build_sce_ast_args_functions(Sce_Lexer_Token_Lists* src_ans_token_list);
 Sce_Ast_Node* build_sce_ast_call_functions(Sce_Lexer_Token_Lists* src_ans_token_list);
 

@@ -97,6 +97,7 @@ static inline void print_sce_ir(Sce_Binary_Machine_Instructions * sce_bm_inst, b
 		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_LABEL__) {
 			printf("%s ", next_->scope2);
+			printf("%lu ", next_->ope1);
 		}
 
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_SYSTEM_CALL__) {
@@ -105,6 +106,11 @@ static inline void print_sce_ir(Sce_Binary_Machine_Instructions * sce_bm_inst, b
 
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_TEST__) {
 			printf(GET_PRINT_STR_SVR(next_->ope1));
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_MOV__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf("&%s ", next_->scope2);
 		}
 
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_MOV__) {
@@ -137,22 +143,68 @@ static inline void print_sce_ir(Sce_Binary_Machine_Instructions * sce_bm_inst, b
 			printf(GET_PRINT_STR_SVR(next_->ope1));
 			printf("%s ", next_->scope2);
 		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_VMOV__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf("virtual ");
+		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_RMOV__) {
 			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf(GET_PRINT_STR_SVR(next_->ope2));
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_RRMOV__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf(GET_PRINT_STR_SVR(next_->ope2));
+			}
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_OMOV__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf(GET_PRINT_STR_SVR(next_->ope2));
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_AMOV__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			if (next_->ope2 != next_->ope1) printf(GET_PRINT_STR_SVR(next_->ope1 + 1));
 			printf(GET_PRINT_STR_SVR(next_->ope2));
 		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_ALLOC__) {
 			printf("%s ", next_->scope2);
 		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_RALLOC__) {
+			printf("&%s ", next_->scope2);
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_CALL__) {
 			printf("%s ", next_->scope2);
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_INDIRECT_CALL__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf("%lu ", next_->ope2);
 		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_JMP__) {
 			printf(GET_PRINT_STR_SVR(SCE_VIRTUAL_REGISTER_CMP_RETURN));
 			printf("%s ", next_->scope2);
 
 		}
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_ACCESS_MEM_MEMBER__) {
 
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf("%s ", next_->scope2);
+
+		}
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_ACCESS_LABEL_MEMBER__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf("%s ", next_->scope2);
+
+		}
+
+		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_ACCESS_ARRAY_MEMORY__) {
+			printf(GET_PRINT_STR_SVR(next_->ope1));
+			printf(GET_PRINT_STR_SVR(next_->ope2));
+
+		}
 		else if (next_->sce_bmr_code == E_SCE_BINARY_INST_SAVE_REGISTER_STACK__) {
 			printf("%u ", next_->ope1);
 
