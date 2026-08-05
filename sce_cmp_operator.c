@@ -245,26 +245,6 @@ static bool to_leq_value_sce_memory(Sce_Virtual_Memory* svr1, Sce_Virtual_Memory
 		return leq_same_value(svr1, svr2);
 	}
 	else if (i == 1) {
-		/**
-		* 右レジスタ強い、左レジスタ弱い
-		* しかし比較は<=
-		* svr2 <= svr1
-		* を渡すということに等しい
-		* svr1 <= svr2で帰ってくるのは
-		* 左のほうが大きい
-		* 右のほうが大きい
-		* 同じである
-		* この中で
-		* 左が来たら、FALSEをつくればいい
-		* これを反対に
-		* 左が大きいであるので
-		* svr1 <= svr2にするには
-		* svr2, svr1
-		* を渡すとき
-		* 右が大きい
-		* 左が大きいの逆を取る
-		* つまり、svr2が大きい右が大きいをfalseにする
-		*/
 		return compare_promoted_value(svr2, svr1) != SCE_COMPARE_LESS;
 	}
 	else {
