@@ -5,6 +5,7 @@ typedef enum Sce_Lexer_Mode {
 	E_Sce_Lexer_Normal_Mode,
 	E_Sce_Lexer_Operator_Mode,
 	E_Sce_Lexer_Dot_Mode,
+	E_Sce_Lexer_Stack_Mode,
 	E_Sce_Lexer_Start_Char_Mode,
 	E_Sce_Lexer_Doll_Char_Mode,
 	E_Sce_Lexer_Next_Char_Mode,
@@ -30,15 +31,34 @@ typedef enum Sce_Lexer_Type {
 	E_Sce_Lexer_Value_Literal,
 	E_Sce_Lexer_Error_Value_Literal,
 }Sce_Lexer_Type;
+
+typedef struct Sce_Lexer_Token_Definition {
+	const char* text;
+	Sce_Lexer_Type type;
+}Sce_Lexer_Token_Definition;
+
+extern const Sce_Lexer_Token_Definition sce_lexer_reserved_token_matrix[];
+extern const char* const sce_lexer_two_byte_operator_matrix[];
+
 typedef struct Sce_Lexer_Token {
 	U8_String_Buffers sce_token_str;
 	Sce_Lexer_Type sce_token_type;
+	uint32_t line;
+	uint32_t column;
 }Sce_Lexer_Token;
 typedef struct Sce_Lexer_Token_Lists {
 	uint32_t token_size;
 	uint32_t token_index;
 	Sce_Lexer_Token* tokens;
 }Sce_Lexer_Token_Lists;
+
+typedef struct Sce_Lexer_Source_Position {
+	uint32_t line;
+	uint32_t column;
+	uint32_t token_line;
+	uint32_t token_column;
+}Sce_Lexer_Source_Position;
+
 #define SCE_REQUIRE_DEFAULT_SIZE U8_STR_REQUIRE_DEFAULT_SIZE
 
 sce_si_strap Sce_Lexer_Token* peek_sce_token_lists(Sce_Lexer_Token_Lists* sce_token_lists) {
@@ -73,19 +93,22 @@ void delete_lexer_sce_lists(Sce_Lexer_Token_Lists* sce_token_lists);
 bool is_sce_token_keyword(const uint8_t* sce_token);
 int is_sce_token_value(const uint8_t* sce_token);
 Sce_Lexer_Type get_lexer_token_type(const uint8_t* sce_token);
-void append_lexer_token_lists(Sce_Lexer_Token_Lists* sce_token_lists, U8_String_Buffers* stack_buffers, Sce_Lexer_Type sce_lexer_type);
+void append_lexer_token_lists(Sce_Lexer_Token_Lists* sce_token_lists, U8_String_Buffers* stack_buffers, Sce_Lexer_Type sce_lexer_type, const Sce_Lexer_Source_Position* source_position);
 Sce_Lexer_Token_Lists start_lexer_sce(const uint8_t* sce_code);
 
-void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, bool* array_literal_mode);
-bool split_operator_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
-bool split_dot_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
-
+void split_normal_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, bool* array_literal_mode, Sce_Lexer_Source_Position* source_position);
+bool split_operator_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, const Sce_Lexer_Source_Position* source_position);
+bool split_dot_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, Sce_Lexer_Source_Position* source_position);
+bool split_stack_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, Sce_Lexer_Source_Position* source_position) ;
 void split_start_string_sce_token(const uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
 void split_doll_string_sce_token(uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
-bool split_next_string_sce_token(uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
+bool split_next_string_sce_token(uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, const Sce_Lexer_Source_Position* source_position);
+void split_char_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, const Sce_Lexer_Source_Position* source_position);
+void split_doll_char_sce_token(uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers);
+void split_next_sce_token(const uint8_t sce_byte__, Sce_Lexer_Token_Lists* sce_lexer_token_lists, Sce_Lexer_Mode* now_mode__, U8_String_Buffers* stack_buffers, const Sce_Lexer_Source_Position* source_position);
 
 void split_comment_sce_token(uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__);
 void split_line_comment_sce_token(uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__);
 void split_multi_line_comment_sce_token(uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__);
 void split_end_multi_line_comment_sce_token(uint8_t sce_byte__, Sce_Lexer_Mode* now_mode__);
-#endif // !_SCE_LEXER_H_
+#endif 

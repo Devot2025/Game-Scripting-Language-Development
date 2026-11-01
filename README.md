@@ -25,5 +25,3 @@ Example script:
 test.sce
 ```
 Partial memory deallocation is not yet implemented.
-
-## CURRETLY, THE CODE HAS SERIOUS Ａ BUG IN RUNTIME VM

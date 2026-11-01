@@ -1,4 +1,4 @@
-#ifndef _SC_ALLOC_H_
+﻿#ifndef _SC_ALLOC_H_
 #define _SC_ALLOC_H_
 #define SC_MEMORY_META_SIZE sizeof(void *)
 

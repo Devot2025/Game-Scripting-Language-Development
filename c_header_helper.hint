@@ -1,4 +1,4 @@
-#ifndef C_HEADER_HELPER_HINT_
+﻿#ifndef C_HEADER_HELPER_HINT_
 #define C_HEADER_HELPER_HINT_
 
 #ifdef __cplusplus

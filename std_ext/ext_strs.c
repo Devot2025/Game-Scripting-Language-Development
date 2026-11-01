@@ -1,17 +1,10 @@
-#include "ext_strs.h"
+ï»¿#include "ext_strs.h"
 
 
 char * ext_str_cpy(char * dst, const char * src, size_t dst_len, size_t src_len){
     if(!dst) return NULL;
     if(!src) return NULL;
-    /**
-     * dst src
-     * 10 5
-     * 5
-     * dst src
-     * 5 10
-     * 5
-    */
+    
     size_t cpy_len__ = dst_len < src_len ? dst_len : src_len;
     smart_memcpy_p(dst, src,  char, cpy_len__);
     return dst;
@@ -279,7 +272,7 @@ long double change_str_to_doubles(int * error_code, const char * str){
     long double dbl;
     if(float_check) dbl = strtold(str, NULL);
     else {
-        /*floatŒno‚È‚¢•¶Žš—ñ‚©‚Â”’l‚Å‚ ‚é‰Â”\«‚Å‚ ‚ê‚Î®”Œn‚ð‰î‚µfloatŒn‚É‚·‚éB*/
+        
         if(!minus) dbl = (long double) change_str_to_long_long_u_int(error_code, cache_str);
         else dbl = (long double)change_str_to_long_long_int(error_code, str);
         if(*error_code < VALID_CHANGE_OUT_CODE) return 0.0L;
@@ -318,21 +311,13 @@ double change_str_to_double(int * error_code, const char * str){
 uint32_t change_str_ptr_str32(const char ** next_str){
     unsigned char * byte_b = (unsigned char *)*next_str;
     if(*byte_b < 0x80){
-        //ascii 1byte
+        
         (*next_str)++;
         return (char)*byte_b;
     }
     else if((*byte_b & 0xE0) == 0xC0){
-        /*0xE0 = 1110 0000b 0xC0 = 1100 0000*/
-        /**
-         * 110x xxxxb
-        * 1110 0000b
-        * ----------
-        * 1100 0000b
-        * 1100 0000b
-        * ----------
-        * true
-        */
+        
+        
         uint32_t dst_byte = ((*byte_b++ & 0x1F) << 6) | (*byte_b & 0x3F);
         *next_str += 2;
         return dst_byte;
@@ -356,21 +341,13 @@ uint32_t change_str_ptr_str32(const char ** next_str){
 uint32_t change_strs_and_idx_str32(const char * next_str, size_t * str_idx){
     unsigned char * byte_b = (unsigned char *)next_str;
     if(*byte_b < 0x80){
-        //ascii 1byte
+        
         (*str_idx)++;
         return (char)*byte_b;
     }
     else if((*byte_b & 0xE0) == 0xC0){
-        /*0xE0 = 1110 0000b 0xC0 = 1100 0000*/
-        /**
-         * 110x xxxxb
-        * 1110 0000b
-        * ----------
-        * 1100 0000b
-        * 1100 0000b
-        * ----------
-        * true
-        */
+        
+        
         uint32_t dst_byte = ((*byte_b++ & 0x1F) << 6) | (*byte_b & 0x3F);
         (*str_idx) += 2;
         return dst_byte;
@@ -427,6 +404,6 @@ uint32_t uint8str_uint32(uint32_t* advance_idx_, const uint8_t* str_) {
                         ((*(str_ + 3)) & 0x3F);
                 }
     }
-    *advance_idx_ = 0;//error_break
+    *advance_idx_ = 0;
     return 0;
 }

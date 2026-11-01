@@ -1,4 +1,4 @@
-#ifndef _EXT_STRS_H_
+﻿#ifndef _EXT_STRS_H_
 #define _EXT_STRS_H_
 #include <std_ext/ext_alloc.h>
 #include <limits.h>

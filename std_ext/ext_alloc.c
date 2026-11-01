@@ -1,10 +1,18 @@
-#include "ext_alloc.h"
+﻿#include "ext_alloc.h"
 #define BASE_ALLOC_SIZE 10
 bool safety_realloc(void** block, size_t now_index, size_t* now_size, size_t type_size) {
-	if (now_index < *now_size)return true;
-	uint32_t block_capacity = *now_size ? (now_index + 1) * 2 : BASE_ALLOC_SIZE;
+	
+	if (now_index < *now_size) return true;	
+	if (!type_size) return false;
+	size_t needed = now_index + 1;
+	
+	if(needed > SIZE_MAX / type_size) return false;
+	if(needed > SIZE_MAX / 2) return false;
+	
+	size_t block_capacity = *now_size ? needed * 2 : BASE_ALLOC_SIZE;
+	
 	void* virtual_block = e_realloc(*block, block_capacity * type_size);
-
+	
 	if (!virtual_block)return false;
 	*now_size = block_capacity;
 
