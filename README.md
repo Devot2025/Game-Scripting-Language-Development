@@ -24,4 +24,3 @@ Example script:
 ```text
 test.sce
 ```
-Partial memory deallocation is not yet implemented.
